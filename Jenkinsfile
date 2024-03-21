@@ -1,61 +1,53 @@
 pipeline {
     agent any
-    
+
+    parameters {
+        booleanParam(name: 'autoApprove', defaultValue: false, description: 'Automatically run apply after generating plan?')
+        choice(name: 'action', choices: ['apply', 'destroy'], description: 'Select the action to perform')
+    }
+
     environment {
-        TF_WORKING_DIR = "terraform" // Set the directory containing Terraform files
+        AWS_ACCESS_KEY_ID     = credentials('aws-access-key-id')
+        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
+        AWS_DEFAULT_REGION    = 'us-east-1'
     }
-    
+
     stages {
-        stage('Fetch Code') {
+        stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/Sacbank/terraform.git'
+                git branch: 'main', url: 'https://github.com/CodeSagarOfficial/jenkins-scripts.git'
             }
         }
-        
-        stage('Setup Terraform') {
+        stage('Terraform init') {
             steps {
-                script {
-                    // Download and install the latest version of Terraform
-                    def tfHome = tool 'Terraform'
-                    env.PATH = "${tfHome}/bin:${env.PATH}"
-                    sh 'terraform --version'
-                }
+                sh 'terraform init'
             }
         }
-        
-        stage('Terraform Plan') {
+        stage('Plan') {
+            steps {
+                sh 'terraform plan -out tfplan'
+                sh 'terraform show -no-color tfplan > tfplan.txt'
+            }
+        }
+        stage('Apply / Destroy') {
             steps {
                 script {
-                    // Initialize and execute terraform plan
-                    dir("${TF_WORKING_DIR}") {
-                        sh 'terraform init'
-                        sh 'terraform plan -out=tfplan'
+                    if (params.action == 'apply') {
+                        if (!params.autoApprove) {
+                            def plan = readFile 'tfplan.txt'
+                            input message: "Do you want to apply the plan?",
+                            parameters: [text(name: 'Plan', description: 'Please review the plan', defaultValue: plan)]
+                        }
+
+                        sh 'terraform ${action} -input=false tfplan'
+                    } else if (params.action == 'destroy') {
+                        sh 'terraform ${action} --auto-approve'
+                    } else {
+                        error "Invalid action selected. Please choose either 'apply' or 'destroy'."
                     }
                 }
             }
         }
-        
-        stage('Terraform Apply') {
-            steps {
-                script {
-                    // Apply the Terraform plan
-                    dir("${TF_WORKING_DIR}") {
-                        sh 'terraform apply -auto-approve tfplan'
-                    }
-                }
-            }
-        }
-    }
-    
-    post {
-        always {
-            // Clean up steps
-            script {
-                // Backup Terraform state to prevent accidental destruction of resources
-                dir("${TF_WORKING_DIR}") {
-                    sh 'terraform state pull > terraform.tfstate.backup'
-                }
-            }
-        }
+
     }
 }
