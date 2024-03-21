@@ -28,6 +28,24 @@ variable "instance_type" {
   default     = "t2.micro"
 }
 
+variable "aws_access_key" {
+  description = "AWS access key"
+  type        = string
+  default     = ""
+}
+
+variable "aws_secret_key" {
+  description = "AWS secret key"
+  type        = string
+  default     = ""
+}
+
+variable "aws_region" {
+  description = "AWS region"
+  type        = string
+  default     = "us-east-1"
+}
+
 variable "key_name" {
   description = "The name of the key pair to use for the EC2 instance"
   default = "virginia"
