@@ -1,34 +1,48 @@
-variable "cidr_block" {
-  description = "The CIDR block for the VPC"
-  default     = "10.0.0.0/16"
-}
+# Create the EC2 instance
+resource "aws_instance" "private_instance" {
+  ami             = data.aws_ami.ubuntu.id  # Using the latest Ubuntu AMI
+  instance_type   = var.instance_type
+  subnet_id       = aws_subnet.private_subnet.id
+  key_name        = var.key_name
+  security_groups = [aws_security_group.Priv_instance_sg.id]  # Reference the security group by ID
+  associate_public_ip_address = false  # This prevents the instance from having a public IP address
+  disable_api_termination = true # Enable termination protection for the instance
 
-data "aws_ami" "ubuntu" {
-  most_recent = true
-  filter {
-    name   = "name"
-    values = ["ubuntu/images/hvm-ssd/ubuntu-*-${var.latest["ubuntu"]}-amd64-server-*"]
+  # Root volume configuration
+  root_block_device {
+    volume_type           = "gp3"
+    volume_size           = 8
+    encrypted             = true
+    kms_key_id            = "alias/aws/ebs" # Use the default AWS managed KMS key for encryption
+    delete_on_termination = true
   }
-  filter {
-    name   = "virtualization-type"
-    values = ["hvm"]
-  }
-  owners = ["099720109477"]
-}
 
-variable "latest" {
-  type = map(any)
-  default = {
-    "ubuntu"  = "22.04"
+  tags = {
+    Name = "Private_Instance"
   }
 }
 
-variable "instance_type" {
-  description = "The type of EC2 instance"
-  default     = "t2.micro"
+# Create an EC2 instance with a public IP
+resource "aws_instance" "public_instance" {
+  ami             = data.aws_ami.ubuntu.id
+  instance_type   = var.instance_type
+  subnet_id       = aws_subnet.public_subnet.id
+  key_name        = var.key_name
+  security_groups = [aws_security_group.Pub_instance_sg.id]
+  associate_public_ip_address = true
+  disable_api_termination = true # Enable termination protection for the instance
+
+  # Root volume configuration
+  root_block_device {
+    volume_type           = "gp3"
+    volume_size           = 8
+    encrypted             = true
+    kms_key_id            = "alias/aws/ebs" # Use the default AWS managed KMS key for encryption
+    delete_on_termination = true
+  }
+
+  tags = {
+    Name = "Public_Instance"
+  }
 }
 
-variable "key_name" {
-  description = "The name of the key pair to use for the EC2 instance"
-  default = "virginia"
-}
