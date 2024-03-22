@@ -1,5 +1,16 @@
 pipeline {
-
+    parameters {
+        choice(
+            name: 'action',
+            choices: ['apply', 'destroy'],
+            description: 'Select action: apply or destroy'
+        )
+        booleanParam(
+            name: 'autoApprove',
+            defaultValue: false,
+            description: 'Automatically run apply/destroy after generating plan?'
+        )
+    }
     environment {
         AWS_ACCESS_KEY_ID     = credentials('aws-access-key-id')
         AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
@@ -21,45 +32,24 @@ pipeline {
                 sh 'terraform plan -out tfplan'
                 sh 'terraform show -no-color tfplan > tfplan.txt'
             }
-        }
-        stage('Prompt for Action') {
-            steps {
-                script {
-                    def userInput = input(
-                        id: 'userInput',
-                        message: 'Do you want to apply changes or destroy infrastructure?',
-                        parameters: [
-                            choice(choices: ['Apply', 'Destroy'], description: 'Choose action to perform')
-                        ]
-                    )
-                    env.APPLY = (userInput == 'Apply') ? 'true' : 'false'
-                    env.DESTROY = (userInput == 'Destroy') ? 'true' : 'false'
-                }
-            }
-        }
-        stage('Terraform Apply') {
+			}
+		stage('Apply or Destroy') {
             when {
-                expression {
-                    return env.APPLY == 'true'
-                }
+                expression { params.action == 'apply' || params.action == 'destroy' }
             }
             steps {
                 script {
-                    sh 'terraform apply -auto-approve -input=false tfplan'
+                    def command = "apply"
+                    if (params.action == 'destroy') {
+                        command = "destroy"
+                    }
+                    def autoApproveFlag = ""
+                    if (params.autoApprove == true) {
+                        autoApproveFlag = "-auto-approve"
+                    }
+                    sh "terraform $command $autoApproveFlag -input=false tfplan"
                 }
             }
-        }
-        stage('Terraform Destroy') {
-            when {
-                expression {
-                    return env.DESTROY == 'true'
-                }
-            }
-            steps {
-                script {
-                    sh 'terraform destroy -auto-approve'
-                }
-            }
-        }
-    }
+        }	
+       }
     }
