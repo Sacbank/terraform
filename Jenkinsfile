@@ -47,7 +47,7 @@ pipeline {
                     if (params.autoApprove == true) {
                         autoApproveFlag = "-auto-approve"
                     }
-                    sh "terraform $command $autoApproveFlag -input=false"
+                    sh "terraform $command $autoApproveFlag -auto-approve"
                 }
             }
         }	
