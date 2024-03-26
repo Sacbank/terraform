@@ -42,7 +42,7 @@ resource "aws_instance" "public_instance" {
   }
 
   tags = {
-    Name = "Public_Instance"
+    Name = "Bastion_Instance"
   }
 }
 
