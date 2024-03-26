@@ -5,6 +5,11 @@ pipeline {
             choices: ['apply', 'destroy'],
             description: 'Select action: apply or destroy'
         )
+        booleanParam(
+            name: 'autoApprove',
+            defaultValue: false,
+            description: 'Automatically run apply/destroy after generating plan?'
+        )
     }
     environment {
         AWS_ACCESS_KEY_ID     = credentials('aws-access-key-id')
@@ -38,7 +43,11 @@ pipeline {
                     if (params.action == 'destroy') {
                         command = "destroy"
                     }
-                    sh "terraform $command -auto-approve"
+                    def autoApproveFlag = ""
+                    if (params.autoApprove == true) {
+                        autoApproveFlag = "-auto-approve"
+                    }
+                    sh "terraform $command $autoApproveFlag -auto-approve"
                 }
             }
         }	
