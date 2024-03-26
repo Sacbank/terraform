@@ -1,20 +1,10 @@
 pipeline {
-    parameters {
-        choice(
-            name: 'action',
-            choices: ['apply', 'destroy'],
-            description: 'Select action: apply or destroy'
-        )
-        booleanParam(
-            name: 'autoApprove',
-            defaultValue: false,
-            description: 'Automatically run apply/destroy after generating plan?'
-        )
-    }
+
     environment {
         AWS_ACCESS_KEY_ID     = credentials('aws-access-key-id')
         AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
     }
+
    agent  any
     stages {
         stage('Checkout') {
@@ -27,29 +17,18 @@ pipeline {
                 sh 'terraform init'
             }
         }
+
         stage('Plan') {
             steps {
                 sh 'terraform plan -out tfplan'
                 sh 'terraform show -no-color tfplan > tfplan.txt'
             }
-			}
-		stage('Apply or Destroy') {
-            when {
-                expression { params.action == 'apply' || params.action == 'destroy' }
-            }
+        }
+
+        stage('Apply') {
             steps {
-                script {
-                    def command = "apply"
-                    if (params.action == 'destroy') {
-                        command = "destroy"
-                    }
-                    def autoApproveFlag = ""
-                    if (params.autoApprove == true) {
-                        autoApproveFlag = "-auto-approve"
-                    }
-                    sh "terraform $command $autoApproveFlag -auto-approve"
-                }
+                sh "terraform apply -input=false tfplan"
             }
-        }	
-       }
+        }
     }
+  }
