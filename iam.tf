@@ -1,7 +1,3 @@
-provider "aws" {  
-    region = "us-east-1"
-}
-
 resource "aws_iam_role" "ssm_role" {  
 	name               = "my_ssm_role"  
     assume_role_policy = <<EOF
